@@ -14,12 +14,16 @@ class ViveiroController extends Controller
     {
         $this->viveiro = new Viveiro();
     }
-        public function index()
-    {
-        $viveiros = Viveiro::all();
+    public function index()
+{
+    $viveiros = Viveiro::all();
 
-        return response()->json($viveiros);
-    }
+    return response()->json([
+        'success' => true,
+        'data' => $viveiros
+    ], 200);
+}
+
 
 
     /**
@@ -29,19 +33,29 @@ class ViveiroController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreUpdateViveiro $request)
-    {
-        $created = $this->viveiro->create([
-            'name' => $request->input('nome'),
-            'width' => $request->input('largura'),
-            'length' => $request->input('comprimento'),
-            'area' => $request->input('largura') * $request->input('comprimento')
-        ]);
-        if($created){
-            return redirect()->route("viveiros.index")->with('success', 'Viveiro Cadastrado com Sucesso' );
-        }
-        return redirect()->back()->with('message', 'Erro ao cadastrar' );
+   public function store(Request $request)
+{
+    $created = $this->viveiro->create([
+        'name' => $request->input('name'),
+        'width' => $request->input('width'),
+        'length' => $request->input('length'),
+        'area' => $request->input('width') * $request->input('length')
+    ]);
+
+    if ($created) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Viveiro cadastrado com sucesso!',
+            'data' => $created
+        ], 201); // 201 Created
     }
+
+    return response()->json([
+        'success' => false,
+        'message' => 'Erro ao cadastrar o viveiro.'
+    ], 500); // 500 Internal Server Error
+}
+
 
     /**
      * Display the specified resource.
