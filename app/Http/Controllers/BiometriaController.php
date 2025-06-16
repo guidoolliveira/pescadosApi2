@@ -5,116 +5,138 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUpdateBiometria;
 use App\Models\Biometria;
 use App\Models\Viveiro;
-use App\Models\Cultivo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class BiometriaController extends Controller
 {
-    public function index(Request $request)
+    public readonly Biometria $biometria;
+
+    public function __construct()
     {
-        $viveiros = Viveiro::all();
-        $biometrias = Biometria::all();
-        return view('biometrias.index', [
-            'biometrias' => $biometrias,
-            'viveiros' => $viveiros,
-        ]);
+        $this->biometria = new Biometria();
     }
 
-    public function create()
+    public function index()
     {
-        $viveiros = Viveiro::all(); 
-        return view('biometrias.create', [
-            'viveiros' => $viveiros,
-        ]);
+        $biometrias = Biometria::with('viveiro')->get();
+
+        if ($biometrias->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nenhuma biometria encontrada.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $biometrias
+        ], 200);
     }
 
-    public function store(StoreUpdateBiometria $request)
+        public function store(Request $request)
     {
+        $request->validate([
+            'weight' => 'required|numeric|gt:0',
+            'quantity' => 'required|integer|gt:0',
+            'date' => 'required|date',
+            'viveiro_id' => 'required|integer|exists:viveiros,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
         $imagePath = null;
         if ($request->hasFile('image')) {
             $fileName = now()->format('Ymd_His') . '.' . $request->image->extension();
             $imagePath = $request->file('image')->storeAs('images', $fileName, 'public');
         }
 
-        $shrimp_weight = round($request->input('peso') / $request->input('quantidade'), 2);
+        $shrimp_weight = round($request->input('weight') / $request->input('quantity'), 2);
 
-        $viveiro = Viveiro::find($request->input("viveiro_id"));
-
-        $cultivoAtivo = $viveiro->cultivo_ativo;
-    
-        if (!$cultivoAtivo) {
-            return redirect()->back()->withInput()->with('message', 'Erro ao cadastrar: Não há cultivo ativo no viveiro selecionado.');
-        }
-
-        Biometria::create([
-            'weight' => $request->input("peso"),
-            'quantity' => $request->input("quantidade"),
-            'date' => $request->input("data"),
-            'description' => $request->input("observacao"),
+        $created = $this->biometria->create([
+            'weight' => $request->input('weight'),
+            'quantity' => $request->input('quantity'),
+            'date' => $request->input('date'),
             'image' => $imagePath,
-            'viveiro_id' => $request->input("viveiro_id"),
-            'cultivo_id' => $cultivoAtivo->id,
+            'viveiro_id' => $request->input('viveiro_id'),
             'shrimp_weight' => $shrimp_weight
         ]);
 
-        return redirect()->route('biometrias.index')->with('success', 'Biometria criada com sucesso.');
+        if ($created) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Biometria criada com sucesso!',
+                'data' => $created
+            ], 201);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erro ao criar biometria.'
+        ], 500);
     }
 
-    public function show($id)   
-    {
-        $biometria = Biometria::with('viveiro')->findOrFail($id); 
-        return view('biometrias.show', compact('biometria'));
-    }
 
-    public function edit(Biometria $biometria)
+        public function update(Request $request)
     {
-        $viveiros = Viveiro::all(); 
-        return view('biometrias.edit', [
-            'biometria' => $biometria,
-            'viveiros' => $viveiros,
+        $request->validate([
+            'id' => 'required|integer|exists:biometrias,id',
+            'weight' => 'required|numeric|gt:0',
+            'quantity' => 'required|integer|gt:0',
+            'date' => 'required|date',
+            'viveiro_id' => 'required|integer|exists:viveiros,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
-    }
 
-    public function update(StoreUpdateBiometria $request, Biometria $biometria)
-    {
+        $biometria = $this->biometria->findOrFail($request->input('id'));
+
         $imagePath = $biometria->image;
         if ($request->hasFile('image')) {
-            if ($biometria->image) {
-                Storage::disk('public')->delete($biometria->image);
+            if ($imagePath) {
+                Storage::disk('public')->delete($imagePath);
             }
             $imagePath = $request->file('image')->store('images', 'public');
         }
-        $viveiro = Viveiro::find($request->input("viveiro_id"));
 
-        $cultivoAtivo = $viveiro->cultivo_ativo;
-    
-        if (!$cultivoAtivo) {
-            return redirect()->back()->withInput()->with('message', 'Erro ao cadastrar: Não há cultivo ativo no viveiro selecionado.');
-        }
+        $shrimp_weight = round($request->input('weight') / $request->input('quantity'), 2);
 
-        $shrimp_weight = round($request->input('peso') / $request->input('quantidade'), 2);
         $biometria->update([
-            'weight' => $request->input("peso"),
-            'quantity' => $request->input("quantidade"),
-            'date' => $request->input("data"),
-            'description' => $request->input("observacao"),
+            'weight' => $request->input('weight'),
+            'quantity' => $request->input('quantity'),
+            'date' => $request->input('date'),
             'image' => $imagePath,
-            'viveiro_id' => $request->input("viveiro_id"),
-            'cultivo_id' => $cultivoAtivo->id,
+            'viveiro_id' => $request->input('viveiro_id'),
             'shrimp_weight' => $shrimp_weight
         ]);
 
-        return redirect()->route('biometrias.index')->with('success', 'Biometria atualizada com sucesso.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Biometria atualizada com sucesso.',
+            'data' => $biometria
+        ]);
     }
 
-    public function destroy(Biometria $biometria)
+
+    public function destroy(Request $request)
     {
+        $id = $request->query('id');
+
+        if (!$id || !is_numeric($id)) {
+            return response()->json(['error' => 'ID inválido ou ausente'], 400);
+        }
+
+        $biometria = $this->biometria->find($id);
+
+        if (!$biometria) {
+            return response()->json(['error' => 'Biometria não encontrada'], 404);
+        }
+
         if ($biometria->image) {
             Storage::disk('public')->delete($biometria->image);
         }
 
         $biometria->delete();
-        return redirect()->route('biometrias.index')->with('success', 'Biometria deletada com sucesso.');
+
+        return response()->json(['success' => 'Biometria deletada com sucesso']);
     }
+
 }

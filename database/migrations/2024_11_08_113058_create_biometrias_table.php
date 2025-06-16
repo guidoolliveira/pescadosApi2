@@ -18,10 +18,8 @@ return new class extends Migration
             $table->float("weight");
             $table->integer("quantity");
             $table->date("date");
-            $table->text('description');
             $table->string('image')->nullable();
             $table->foreignId('viveiro_id')->constrained('viveiros')->onDelete('cascade');
-            $table->foreignId('cultivo_id')->constrained('cultivos')->onDelete('cascade');
         });
     }
 
