@@ -43,11 +43,14 @@ class ViveiroController extends Controller
      */
    public function store(Request $request)
 {
+   $areaValue = ($request->input('width') * $request->input('length')) / 10000;
+$area = rtrim(rtrim(number_format($areaValue, 2, '.', ''), '0'), '.') . " ha";
+
     $created = $this->viveiro->create([
         'name' => $request->input('name'),
         'width' => $request->input('width'),
         'length' => $request->input('length'),
-        'area' => $request->input('width') * $request->input('length')
+        'area' => $area
     ]);
 
     if ($created) {
@@ -73,52 +76,70 @@ class ViveiroController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request)
+    public function update(Request $request, $id)
 {
     $request->validate([
-        'id' => 'required|integer|exists:viveiros,id',
         'name' => 'required|string|max:255',
         'width' => 'required|numeric|gt:0|lte:999',
         'length' => 'required|numeric|gt:0|lte:999',
     ]);
 
-    $id = $request->input('id');
+    $viveiro = $this->viveiro->find($id);
 
-    $viveiro = $this->viveiro->findOrFail($id);
+    if (!$viveiro) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Viveiro não encontrado.'
+        ], 404);
+    }
+    $areaValue = ($request->input('width') * $request->input('length')) / 10000;
+$area = rtrim(rtrim(number_format($areaValue, 2, '.', ''), '0'), '.') . " ha";
 
     $viveiro->update([
         'name' => $request->input('name'),
         'width' => $request->input('width'),
         'length' => $request->input('length'),
-        'area' => $request->input('width') * $request->input('length'),
+        'area' => $area,
     ]);
 
     return response()->json([
         'success' => true,
         'message' => 'Viveiro atualizado com sucesso.',
+        'data' => $viveiro
     ]);
 }
+
 
 
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request)
+    public function destroy($id)
 {
-    $id = $request->query('id');
-
-    if (!$id || !is_numeric($id)) {
-        return response()->json(['error' => 'ID inválido ou ausente'], 400);
+    if (!is_numeric($id)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'ID inválido.'
+        ], 400);
     }
 
-    $deleted = $this->viveiro->where('id', $id)->delete();
+    $viveiro = $this->viveiro->find($id);
 
-    if ($deleted) {
-        return response()->json(['success' => 'Viveiro deletado com sucesso']);
+    if (!$viveiro) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Viveiro não encontrado.'
+        ], 404);
     }
 
-    return response()->json(['error' => 'Viveiro não encontrado'], 404);
+    $viveiro->delete();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Viveiro deletado com sucesso.'
+    ]);
 }
+
 
 }

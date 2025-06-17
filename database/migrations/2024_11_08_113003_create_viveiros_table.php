@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string("name");
             $table->integer("width");
             $table->integer("length");
-            $table->integer("area");
+            $table->string("area");
         });
     }
 

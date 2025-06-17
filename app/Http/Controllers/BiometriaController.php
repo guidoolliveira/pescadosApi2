@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreUpdateBiometria;
 use App\Models\Biometria;
-use App\Models\Viveiro;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,13 +26,19 @@ class BiometriaController extends Controller
             ], 404);
         }
 
+        // Formatando datas no padrão brasileiro
+        $formatted = $biometrias->map(function ($item) {
+            $item->date = \Carbon\Carbon::parse($item->date)->format('d/m/Y');
+            return $item;
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $biometrias
+            'data' => $formatted
         ], 200);
     }
 
-        public function store(Request $request)
+    public function store(Request $request)
     {
         $request->validate([
             'weight' => 'required|numeric|gt:0',
@@ -75,11 +79,9 @@ class BiometriaController extends Controller
         ], 500);
     }
 
-
-        public function update(Request $request)
+    public function update(Request $request, $id)
     {
         $request->validate([
-            'id' => 'required|integer|exists:biometrias,id',
             'weight' => 'required|numeric|gt:0',
             'quantity' => 'required|integer|gt:0',
             'date' => 'required|date',
@@ -87,7 +89,11 @@ class BiometriaController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $biometria = $this->biometria->findOrFail($request->input('id'));
+        $biometria = $this->biometria->find($id);
+
+        if (!$biometria) {
+            return response()->json(['error' => 'Biometria não encontrada'], 404);
+        }
 
         $imagePath = $biometria->image;
         if ($request->hasFile('image')) {
@@ -115,15 +121,8 @@ class BiometriaController extends Controller
         ]);
     }
 
-
-    public function destroy(Request $request)
+    public function destroy($id)
     {
-        $id = $request->query('id');
-
-        if (!$id || !is_numeric($id)) {
-            return response()->json(['error' => 'ID inválido ou ausente'], 400);
-        }
-
         $biometria = $this->biometria->find($id);
 
         if (!$biometria) {
@@ -138,5 +137,4 @@ class BiometriaController extends Controller
 
         return response()->json(['success' => 'Biometria deletada com sucesso']);
     }
-
 }
