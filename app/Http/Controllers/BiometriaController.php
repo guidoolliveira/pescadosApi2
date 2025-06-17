@@ -26,7 +26,7 @@ class BiometriaController extends Controller
             ], 404);
         }
 
-        // Formatando datas no padrão brasileiro
+        // Formatando dates no padrão brasileiro
         $formatted = $biometrias->map(function ($item) {
             $item->date = \Carbon\Carbon::parse($item->date)->format('d/m/Y');
             return $item;
@@ -137,4 +137,28 @@ class BiometriaController extends Controller
 
         return response()->json(['success' => 'Biometria deletada com sucesso']);
     }
+
+
+    public function graficoCrescimento()
+{
+    $dados = Biometria::with('viveiro:id,name')
+        ->select('id', 'viveiro_id', 'date', 'shrimp_weight')
+        ->orderBy('viveiro_id')
+        ->orderBy('date')
+        ->get()
+        ->map(function ($biometria) {
+            return [
+                'viveiro_id'   => $biometria->viveiro_id,
+                'viveiro_name' => $biometria->viveiro->name ?? null,
+                'date'         => \Carbon\Carbon::parse($biometria->date)->format('d/m/Y'),
+                'shrimp_weight' => $biometria->shrimp_weight,
+            ];
+        });
+
+   return response()->json([
+    'data' => $dados
+]);
+
+}
+
 }
